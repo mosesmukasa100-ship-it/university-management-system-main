@@ -1081,44 +1081,8 @@ app.get("/api/submissions", requireRole("lecturer"), (request, response) => {
   `,
       )
       .all(request.user.id, courseId, courseId, assignmentId, assignmentId, search, search, search),
-
-    app.get("/api/lecturer/submission-roster", requireRole("lecturer"), (request, response) => {
-      const courseId = typeof request.query.courseId === "string" ? request.query.courseId : null;
-      const assignmentId = typeof request.query.assignmentId === "string" ? request.query.assignmentId : null;
-      const search = typeof request.query.search === "string" ? request.query.search.trim() : "";
-      if (courseId && !lecturerOwnsCourse(request.user.id, courseId)) {
-        return response.status(404).json({ error: "Assigned course not found." });
-      }
-      if (assignmentId && !assignedRecord(assignmentId, request.user.id, "assignments")) {
-        return response.status(404).json({ error: "Assigned assignment not found." });
-      }
-      response.json(db.prepare(`
-        SELECT a.id AS assignment_id, a.title AS assignment_title, a.due_date, a.points,
-          c.id AS course_id, c.code AS course_code, c.title AS course_title,
-          u.id AS student_id, u.full_name AS student_name, u.student_number,
-          s.id AS submission_id, s.submitted_at, s.response,
-          g.score AS grade, g.feedback, g.status AS grade_status,
-          CASE WHEN s.id IS NULL THEN 'not_submitted'
-            WHEN g.status = 'published' THEN 'graded'
-            WHEN g.status = 'draft' THEN 'draft'
-            ELSE 'awaiting_grading' END AS submission_status,
-          CASE WHEN s.id IS NOT NULL AND date(s.submitted_at) > a.due_date THEN 1 ELSE 0 END AS is_late
-        FROM assignments a
-        JOIN courses c ON c.id = a.course_id AND c.lecturer_id = ?
-        JOIN enrollments e ON e.course_id = c.id
-        JOIN users u ON u.id = e.student_id
-        LEFT JOIN submissions s ON s.assignment_id = a.id AND s.student_id = u.id
-        LEFT JOIN submission_grades g ON g.submission_id = s.id
-        WHERE a.status IN ('open', 'published', 'closed')
-          AND (? IS NULL OR c.id = ?)
-          AND (? IS NULL OR a.id = ?)
-          AND (? = '' OR LOWER(u.full_name) LIKE '%' || LOWER(?) || '%'
-            OR LOWER(COALESCE(u.student_number, '')) LIKE '%' || LOWER(?) || '%')
-        ORDER BY a.due_date, u.full_name
-      `).all(request.user.id, courseId, courseId, assignmentId, assignmentId, search, search, search));
-    });
-  );
-});
+    );
+  });
 
 app.get("/api/lecturer/submission-roster", requireRole("lecturer"), (request, response) => {
   const courseId = typeof request.query.courseId === "string" ? request.query.courseId : null;
